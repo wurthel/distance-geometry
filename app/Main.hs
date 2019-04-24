@@ -1,6 +1,7 @@
 module Main where
 
-import Lib
+import Parser
+import DistanceGeometry
 
 main :: IO ()
-main = someFunc
+main = undefined
