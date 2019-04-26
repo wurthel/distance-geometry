@@ -9,7 +9,8 @@ import System.IO.Strict
 import System.IO.Unsafe
 
 -- | Я рапсарсиваю файл неполность. 
--- Смотри реализации addAtoms и addBonds
+-- Смотри реализации addAtoms и addBonds:
+-- В .mol файле есть поля, предназачение которых мне неизвестно
 parserMolV2000 :: FilePath -> ([Atom], [Bond])
 parserMolV2000 inf = 
     let txt = lines . unsafePerformIO . readFile $ inf
@@ -38,9 +39,9 @@ parserMolV2000 inf =
             let w = words b
                 i0 = ID . read $ w !! 0
                 i1 = ID . read $ w !! 1
-                i2 = BondType . read $ w !! 2
-                i3 = BondSter . read $ w !! 3
-                i4 = BondTop  . read $ w !! 4
+                i2  = BondType . read $ w !! 2
+                i3  = BondSter . read $ w !! 3
+                i4  = BondTop  . read $ w !! 4
                 bond = Bond i0 i1 i2 i3 i4
             in bond : addBond bs 
 
