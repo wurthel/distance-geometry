@@ -23,6 +23,7 @@ dependencies:
 - strict
 - fclabels
 - hmatrix
+- mtl
 
 library:
   source-dirs: src
