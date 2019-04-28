@@ -1,4 +1,9 @@
-module DistanceGeometry where
+{-# LANGUAGE BangPatterns     #-}
+
+module DistanceGeometry 
+    ( generateOfDistanceBoundsMatrix
+    , triangleInequalitySmoothingFloyd)
+    where
 
 import Types
 import Numeric.LinearAlgebra
@@ -40,8 +45,9 @@ generateOfDistanceBoundsMatrix atoms bonds =
                 where (xi, yi, zi) = get coordin (atoms !! (i - 1))
                       (xj, yj, zj) = get coordin (atoms !! (j - 1))
     
-triangleInequalitySmoothingFloyd :: Matrix Double -> Matrix Double
-triangleInequalitySmoothingFloyd matrix = 
+triangleInequalitySmoothingFloyd :: Matrix Double -> Maybe (Matrix Double)
+triangleInequalitySmoothingFloyd matrix =
+    do
     let n = rows matrix  
         upperBounds = build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
                                               in if i <= j 
@@ -52,45 +58,44 @@ triangleInequalitySmoothingFloyd matrix =
                                                  then matrix `atIndex` (j, i) 
                                                  else matrix `atIndex` (i, j))
         kij = [(k, i, j) | k <- [0 .. n-1], i <- [0 .. n-2], j <- [i+1 .. n-1]]
-        smoothing (u0, l0) (k, i, j) = 
-            let (u1, l1) = if (e1 > e2 + e3) then (changeMatrix i j u0 (e2 + e3), l0) else (u0, l0)
+        smoothing Nothing _ = Nothing
+        smoothing (Just (u0, l0)) (k, i, j) = 
+            do
+            let (u1, l1) = if (e1 > e2 + e3) then (changeMatrix u0 (i, j) (e2 + e3), l0) else (u0, l0)
                     where e1 = u0 `atIndex` (i,j)
                           e2 = u0 `atIndex` (i,k)
                           e3 = u0 `atIndex` (k,j)
-                (u2, l2) = if (e1 < e2 - e3) then (u1, changeMatrix i j l1 (e2 - e3)) else (u1, l1)
+                (u2, l2) = if (e1 < e2 - e3) then (u1, changeMatrix l1 (i, j) (e2 - e3)) else (u1, l1)
                     where e1 = l1 `atIndex` (i,j)
                           e2 = l1 `atIndex` (i,k)
                           e3 = u1 `atIndex` (k,j)
-                (u3, l3) = if (e1 < e2 - e3) then (u2, changeMatrix i j l2 (e2 - e3)) else (u2, l2)
+                (u3, l3) = if (e1 < e2 - e3) then (u2, changeMatrix l2 (i, j) (e2 - e3)) else (u2, l2)
                     where e1 = l2 `atIndex` (i,j)
                           e2 = l2 `atIndex` (j,k)
                           e3 = u2 `atIndex` (k,i)
-                (u4, l4) = if (e1 > e2) then error ("Erroneous Bounds") else (u3, l3)
-                    where e1 = l3 `atIndex` (i,j)
-                          e2 = u3 `atIndex` (i,j)
-            in  (u4, l4)
-        (upperBounds', lowerBounds') = foldl' smoothing (upperBounds, lowerBounds) kij
-    in  build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
-                                in if i <= j 
-                                   then upperBounds' `atIndex` (i, j)
-                                   else lowerBounds' `atIndex` (i, j))
+            if (l3 ! i ! j > u3 !i !j) then fail "Erroneous Bounds" else Just (u3, l3)
+    (upperBounds', lowerBounds') <- foldl' smoothing (Just (upperBounds, lowerBounds)) kij
+    return $ build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
+                                     in if i <= j 
+                                        then upperBounds' `atIndex` (i, j)
+                                        else lowerBounds' `atIndex` (i, j))
 
 -- | UTILITS. НАЧАЛО
--- | Массив Ван-дер-Ваальсовых радиусов
-changeMatrix :: Int -> Int -> Matrix Double -> Double -> Matrix Double
-changeMatrix i j m v = runSTMatrix $ do
+-- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
+changeMatrix :: Matrix Double -> (Int, Int) -> Double -> Matrix Double
+changeMatrix m (i, j) v = runSTMatrix $ do
     m' <- thawMatrix m
     writeMatrix m' i j v
     return m'
 
-
+-- | Массив Ван-дер-Ваальсовых радиусов
 vdmr :: [Atom] -> [Double]
 vdmr = map (getVDWR' . get name )
-    where getVDWR' a = case a of "C" -> 1.782
-                                 "H" -> 0.200
-                                 "N" -> 1.648
-                                 "O" -> 1.510
-                                 "S" -> 1.782
+    where getVDWR' a = case a of "C" -> 0.500
+                                 "H" -> 0.500
+                                 "N" -> 0.500
+                                 "O" -> 0.500
+                                 "S" -> 0.500
 
 -- | Определяет, связаны ли атомы
 isBonded :: ID -> ID -> [Bond]-> Bool
