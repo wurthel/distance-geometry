@@ -1,6 +1,5 @@
 .stack-work/
-distance-geometry-exe.hp
-distance-geometry-exe.svg
+distance-geometry-exe*
 distance-geometry.cabal
 .DS_Store
 *~
