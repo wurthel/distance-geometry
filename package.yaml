@@ -33,6 +33,8 @@ executables:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -prof
+    - -fprof-auto-top
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
