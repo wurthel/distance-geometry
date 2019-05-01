@@ -6,8 +6,7 @@ import Data.Maybe
 
 main :: IO ()
 main = do
-    let (atoms, bonds) = parserMolV2000 "example/example.mol"
-        n = (triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms) bonds
-        z = fromJust n
-    q <- randomDistanceMatrix z
-    print $ distanceToMetricMatrix q
+    let (atoms, bonds) = parserMolV2000 "example/retinal.mol"
+    q <- (randomDistanceMatrix . fromJust .  triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms) bonds
+    let p = (generateCoordinFromEigValAndVec . largestEigValAndVec . distanceToMetricMatrix) q
+    print p

@@ -4,7 +4,9 @@ module DistanceGeometry
     ( generateDistanceBoundsMatrix
     , triangleInequalitySmoothingFloyd
     , randomDistanceMatrix
-    , distanceToMetricMatrix)
+    , distanceToMetricMatrix
+    , largestEigValAndVec
+    , generateCoordinFromEigValAndVec)
     where
 
 import Types
@@ -13,7 +15,7 @@ import Numeric.LinearAlgebra.Data
 import Numeric.LinearAlgebra.Devel
 import Control.Category
 import Data.Label
-import Data.List (foldl')
+import Data.List (foldl', zipWith3)
 import Prelude hiding ((.), id)
 import System.Random
 
@@ -121,8 +123,20 @@ distanceToMetricMatrix matr =
                                     c = matr `atIndex` (i, j)
                                 in  (a + b - c^2) / 2 )
 
-largestEigen :: Matrix Double -> Matrix Double
-largestEigen matr = undefined
+-- | distanceToMetricMatrix is symmetric matrix => eigenvalues is real
+-- Function return @k@ pairs of eigenvalues and eigenvectors (as columns)    
+-- in descending order
+largestEigValAndVec :: Matrix Double -> (Vector Double, Matrix Double)
+largestEigValAndVec matr = 
+    if (not . isSymmetric) matr then error "The matrix is not symmetric"
+    else (subVector 0 k a, takeColumns k b)
+         where (a, b) = (eigSH . trustSym) matr
+               k = min 3 (size a)
+
+-- | Generation of three-dimensional coordinates from 
+-- eigenvalues and eigenvectors.
+generateCoordinFromEigValAndVec :: (Vector Double, Matrix Double) -> Matrix Double
+generateCoordinFromEigValAndVec (val, vec) = vec Numeric.LinearAlgebra.<> (diag val)
 
 -- | UTILITS. НАЧАЛО
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
@@ -131,6 +145,13 @@ changeMatrix m (i, j) v = runSTMatrix $ do
     m' <- thawMatrix m
     writeMatrix m' i j v
     return m'
+
+isSymmetric :: Matrix Double -> Bool
+isSymmetric matr =
+    let r = rows matr
+        c = cols matr
+        s = [matr ! i ! j == matr ! j ! i | i <- [0 .. r - 1], j <- [i .. c - 1]]
+    in if r /= c then False else and s
 
 -- | Массив Ван-дер-Ваальсовых радиусов
 vdmr :: [Atom] -> [Double]
