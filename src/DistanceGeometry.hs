@@ -1,8 +1,10 @@
 {-# LANGUAGE BangPatterns     #-}
 
 module DistanceGeometry 
-    ( generateOfDistanceBoundsMatrix
-    , triangleInequalitySmoothingFloyd)
+    ( generateDistanceBoundsMatrix
+    , triangleInequalitySmoothingFloyd
+    , randomDistanceMatrix
+    , distanceToMetricMatrix)
     where
 
 import Types
@@ -13,6 +15,7 @@ import Control.Category
 import Data.Label
 import Data.List (foldl')
 import Prelude hiding ((.), id)
+import System.Random
 
 van_der_Waals_radii = 
             [0.001, 31, 28, 128, 96, 84, 73, 71, 66, 57, 58, 166, 141, 121, 111, 107, 105, 102, 106, 203, 176, 170, 160,
@@ -21,15 +24,16 @@ van_der_Waals_radii =
             192, 192, 189, 190, 187, 187, 175, 170, 162, 151, 144, 141, 136, 136, 132, 145, 146, 148, 140, 150, 150,
             260, 221, 215, 206, 200, 196, 190, 187, 180, 169]
 
--- | If we know the bound distance between atoms we set it
+-- | Generate of a distance bounds matrix
+-- If we know the bound distance between atoms we set it
 -- in upper and lower bounds matrix. If we assime that the atoms have 
 -- van der Waals radii, then we can set all the other lower
 -- bounds as sum of van der Waals radii (the default lower
 -- bound between any two atoms is the sum of their
 -- van der Waals radii). If the upper bounds are not
 -- known then we shall enter a default value of 100.
-generateOfDistanceBoundsMatrix :: [Atom] -> [Bond] -> Matrix Double
-generateOfDistanceBoundsMatrix atoms bonds = 
+generateDistanceBoundsMatrix :: [Atom] -> [Bond] -> Matrix Double
+generateDistanceBoundsMatrix atoms bonds = 
     build (n, n) (\i' j' -> let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
                             in  if i == j 
                                 then 0
@@ -44,19 +48,20 @@ generateOfDistanceBoundsMatrix atoms bonds =
           fixedDist (ID i) (ID j) = sqrt $ (xj - xi)^2 + (yj - yi)^2 + (zj - zi)^2
                 where (xi, yi, zi) = get coordin (atoms !! (i - 1))
                       (xj, yj, zj) = get coordin (atoms !! (j - 1))
-    
+
+-- | Triangle Inequality Bounds Smoothing
 triangleInequalitySmoothingFloyd :: Matrix Double -> Maybe (Matrix Double)
-triangleInequalitySmoothingFloyd matrix =
+triangleInequalitySmoothingFloyd matr =
     do
-    let n = rows matrix  
+    let n = rows matr 
         upperBounds = build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
                                               in if i <= j 
-                                                 then matrix `atIndex` (i, j) 
-                                                 else matrix `atIndex` (j, i))
+                                                 then matr `atIndex` (i, j) 
+                                                 else matr `atIndex` (j, i))
         lowerBounds = build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
                                               in if i <= j 
-                                                 then matrix `atIndex` (j, i) 
-                                                 else matrix `atIndex` (i, j))
+                                                 then matr `atIndex` (j, i) 
+                                                 else matr `atIndex` (i, j))
         kij = [(k, i, j) | k <- [0 .. n-1], i <- [0 .. n-2], j <- [i+1 .. n-1]]
         smoothing Nothing _ = Nothing
         smoothing (Just (u0, l0)) (k, i, j) = 
@@ -79,6 +84,45 @@ triangleInequalitySmoothingFloyd matrix =
                                      in if i <= j 
                                         then upperBounds' `atIndex` (i, j)
                                         else lowerBounds' `atIndex` (i, j))
+
+-- | Generation of a distance matrix by random selection 
+-- of distances between the bounds.
+randomDistanceMatrix :: Matrix Double -> IO (Matrix Double)
+randomDistanceMatrix matr = do
+    let n = rows matr
+    distanceVector <- sequence [r | i <- [0 .. n-1], j <- [0 .. n-1], 
+                                let a = matr `atIndex` (j , i)
+                                    b = matr `atIndex` (i , j)
+                                    r = if j <= i then return 0 else randomRIO (a, b)]
+    let distanceMatrix = matrix n distanceVector
+    return $ distanceMatrix `add` (tr' distanceMatrix)
+
+-- | Improving Random Sampling: Metrization
+metrization :: Matrix Double -> Matrix Double
+metrization matrix = undefined
+
+-- | Improving Random Sampling: Partial Metrization
+partialMetrization :: Matrix Double -> Matrix Double
+partialMetrization matrix = undefined
+
+-- | Conversion of the distance matrix to a metric matrix
+distanceToMetricMatrix :: Matrix Double -> Matrix Double
+distanceToMetricMatrix matr =
+    let n = rows matr
+        m = fromIntegral n
+        uTriangleMatr = build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
+                                                in if j <= i 
+                                                   then 0
+                                                   else matr `atIndex` (i, j))
+        d0 = \i -> (1/m) * (sumElements $ (matr ! i)^2) - (1/m^2) * (sumElements $ uTriangleMatr^2)
+    in  build (n, n) (\i' j' -> let (i, j) = (fromEnum i', fromEnum j')
+                                    a = d0 i
+                                    b = d0 j
+                                    c = matr `atIndex` (i, j)
+                                in  (a + b - c^2) / 2 )
+
+largestEigen :: Matrix Double -> Matrix Double
+largestEigen matr = undefined
 
 -- | UTILITS. НАЧАЛО
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
