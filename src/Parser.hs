@@ -30,8 +30,8 @@ parserMolV2000 inf =
           y = read $ w !! 1
           z = read $ w !! 2
           c = (x, y, z)
-          s = w !! 3
-          atom = Atom i c s
+          s = Element $ w !! 3
+          atom = Atom i s c
        in atom : addAtom ls (n + 1)
     addBond :: [String] -> [Bond]
     addBond [] = []

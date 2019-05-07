@@ -11,6 +11,10 @@ newtype ID =
   ID Int
   deriving (Num, Enum, Eq, Ord, Show)
 
+newtype Element = 
+  Element String
+  deriving Show
+
 newtype BondType =
   BondType Int
   deriving (Num, Enum, Eq, Ord, Show)
@@ -25,20 +29,18 @@ newtype BondTop =
 
 type Point = (Double, Double, Double)
 
-type Name = String
-
 data Atom =
   Atom
     { _aid :: ID
-    , _coordin :: Point
-    , _name :: Name
+    , _aelem :: Element
+    , _acoord :: Point
     }
   deriving (Show)
 
 data Bond =
   Bond
-    { _fid :: ID
-    , _sid :: ID
+    { _bfid :: ID
+    , _bsid :: ID
     , _btype :: BondType
     , _bster :: BondSter
     , _btop :: BondTop
