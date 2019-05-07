@@ -1,10 +1,18 @@
 module DistanceGeometry
-  ( generateDistanceBoundsMatrix
+  ( 
+  -- * Main functions
+    generateDistanceBoundsMatrix
   , triangleInequalitySmoothingFloyd
   , randomDistanceMatrix
-  , distanceToMetricMatrix
+  , distanceMatrixToMetricMatrix
   , largestEigValAndVec
   , generateCoordinFromEigValAndVec
+  , coordMatrixToDistanceMatrix
+
+  -- * Error Functions
+  , distanceErrorFunction1
+  , distanceErrorFunction2
+  , distanceErrorFunction3
   ) where
 
 import Control.Category
@@ -17,6 +25,7 @@ import Prelude hiding ((.), id)
 import System.Random
 import Types
 
+-- * Main functions
 -- | Generate of a distance bounds matrix
 -- If we know the bound distance between atoms we set it
 -- in upper and lower bounds matrix. If we assime that the atoms have 
@@ -25,59 +34,47 @@ import Types
 -- bound between any two atoms is the sum of their
 -- van der Waals radii). If the upper bounds are not
 -- known then we shall enter a default value of 100.
-generateDistanceBoundsMatrix :: [Atom] -> [Bond] -> Matrix Double
+generateDistanceBoundsMatrix :: [Atom] -> [Bond] -> (Matrix Double, Matrix Double)
 generateDistanceBoundsMatrix atoms bonds =
-  build
-    (n, n)
-    (\i' j' ->
-       let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
-        in if i == j
-             then 0
-             else if isBonded i j bonds
-                    then fixedDist i j
-                    else if i < j
-                           then upperDist i j
-                           else lowerDist i j)
-  where
-    n = length atoms
-    upperDist (ID i) (ID j) = 100
-    lowerDist (ID i) (ID j) = (vdmr atoms !! (i - 1)) + (vdmr atoms !! (j - 1))
-    fixedDist (ID i) (ID j) =
-      sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
-      where
-        (xi, yi, zi) = get coordin (atoms !! (i - 1))
-        (xj, yj, zj) = get coordin (atoms !! (j - 1))
+  let n = length atoms
+      upperDist (ID i) (ID j) = 100
+      lowerDist (ID i) (ID j) = (vdmr atoms !! (i - 1)) + (vdmr atoms !! (j - 1))
+      fixedDist (ID i) (ID j) = sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
+        where
+          (xi, yi, zi) = get acoord (atoms !! (i - 1))
+          (xj, yj, zj) = get acoord (atoms !! (j - 1))
+      upper =
+        build
+          (n, n)
+          (\i' j' ->
+             let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
+              in if i == j
+                   then 0
+                   else if isBonded i j bonds
+                          then fixedDist i j
+                          else upperDist i j)
+      lower =
+        build
+          (n, n)
+          (\i' j' ->
+             let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
+              in if i == j
+                   then 0
+                   else if isBonded i j bonds
+                          then fixedDist i j
+                          else lowerDist i j)
+   in (upper, lower)
 
 -- | Triangle Inequality Bounds Smoothing
-triangleInequalitySmoothingFloyd :: Matrix Double -> Maybe (Matrix Double)
-triangleInequalitySmoothingFloyd matr = do
-  let n = rows matr
-      upperBounds =
-        build
-          (n, n)
-          (\i' j' ->
-             let (i, j) = (fromEnum i', fromEnum j')
-              in if i <= j
-                   then matr `atIndex` (i, j)
-                   else matr `atIndex` (j, i))
-      lowerBounds =
-        build
-          (n, n)
-          (\i' j' ->
-             let (i, j) = (fromEnum i', fromEnum j')
-              in if i <= j
-                   then matr `atIndex` (j, i)
-                   else matr `atIndex` (i, j))
-      kij =
-        [ (k, i, j)
-        | k <- [0 .. n - 1]
-        , i <- [0 .. n - 2]
-        , j <- [i + 1 .. n - 1]
-        ]
-      smoothing Nothing _ = Nothing
-      smoothing (Just (u0, l0)) (k, i, j) = do
+-- triangleInequalitySmoothingFloyd :: Matrix Double -> Either String (Matrix Double)
+triangleInequalitySmoothingFloyd ::
+     (Matrix Double, Matrix Double) -> (Matrix Double, Matrix Double)
+triangleInequalitySmoothingFloyd (upper, lower) =
+  let n = rows upper
+      kij = [(k, i, j) | k <- [0 .. n - 1], i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      smoothing (u0, l0) (k, i, j) = do
         let (u1, l1) =
-              if (e1 > e2 + e3)
+              if e1 > e2 + e3
                 then (changeMatrix u0 (i, j) (e2 + e3), l0)
                 else (u0, l0)
               where
@@ -85,7 +82,7 @@ triangleInequalitySmoothingFloyd matr = do
                 e2 = u0 `atIndex` (i, k)
                 e3 = u0 `atIndex` (k, j)
             (u2, l2) =
-              if (e1 < e2 - e3)
+              if e1 < e2 - e3
                 then (u1, changeMatrix l1 (i, j) (e2 - e3))
                 else (u1, l1)
               where
@@ -93,39 +90,49 @@ triangleInequalitySmoothingFloyd matr = do
                 e2 = l1 `atIndex` (i, k)
                 e3 = u1 `atIndex` (k, j)
             (u3, l3) =
-              if (e1 < e2 - e3)
+              if e1 < e2 - e3
                 then (u2, changeMatrix l2 (i, j) (e2 - e3))
                 else (u2, l2)
               where
                 e1 = l2 `atIndex` (i, j)
                 e2 = l2 `atIndex` (j, k)
                 e3 = u2 `atIndex` (k, i)
-        if (l3 ! i ! j > u3 ! i ! j)
-          then fail "Erroneous Bounds"
-          else Just (u3, l3)
-  (upperBounds', lowerBounds') <-
-    foldl' smoothing (Just (upperBounds, lowerBounds)) kij
-  return $
-    build
-      (n, n)
-      (\i' j' ->
-         let (i, j) = (fromEnum i', fromEnum j')
-          in if i <= j
-               then upperBounds' `atIndex` (i, j)
-               else lowerBounds' `atIndex` (i, j))
+        if l3 ! i ! j > u3 ! i ! j
+          then error "Erroneous Bounds"
+          else (u3, l3)
+          --then Left "Erroneous Bounds"
+          --else Right (u3, l3)
+      (upper', lower') = foldl' smoothing (upper, lower) kij
+      upper'' =
+        build
+          (n, n)
+          (\i' j' ->
+             let (i, j) = (fromEnum i', fromEnum j')
+              in if i < j
+                   then upper' `atIndex` (i, j)
+                   else upper' `atIndex` (j, i))
+      lower'' =
+        build
+          (n, n)
+          (\i' j' ->
+             let (i, j) = (fromEnum i', fromEnum j')
+              in if i < j
+                   then lower' `atIndex` (i, j)
+                   else lower' `atIndex` (j, i))
+   in (upper'', lower'')
 
 -- | Generation of a distance matrix by random selection 
 -- of distances between the bounds.
-randomDistanceMatrix :: Matrix Double -> IO (Matrix Double)
-randomDistanceMatrix matr = do
-  let n = rows matr
+randomDistanceMatrix :: (Matrix Double, Matrix Double) -> IO (Matrix Double)
+randomDistanceMatrix (upper, lower) = do
+  let n = rows upper
   distanceVector <-
     sequence
       [ r
       | i <- [0 .. n - 1]
       , j <- [0 .. n - 1]
-      , let a = matr `atIndex` (j, i)
-            b = matr `atIndex` (i, j)
+      , let a = lower `atIndex` (i, j)
+            b = upper `atIndex` (i, j)
             r =
               if j <= i
                 then return 0
@@ -143,8 +150,8 @@ partialMetrization :: Matrix Double -> Matrix Double
 partialMetrization matrix = undefined
 
 -- | Conversion of the distance matrix to a metric matrix
-distanceToMetricMatrix :: Matrix Double -> Matrix Double
-distanceToMetricMatrix matr =
+distanceMatrixToMetricMatrix :: Matrix Double -> Matrix Double
+distanceMatrixToMetricMatrix matr =
   let n = rows matr
       m = fromIntegral n
       uTriangleMatr =
@@ -174,19 +181,77 @@ largestEigValAndVec :: Matrix Double -> (Vector Double, Matrix Double)
 largestEigValAndVec matr =
   if (not . isSymmetric) matr
     then error "The matrix is not symmetric"
-    else (subVector 0 k a, takeColumns k b)
+    else (subVector 0 k eigval, takeColumns k eigvec)
   where
-    (a, b) = (eigSH . trustSym) matr
-    k = min 3 (size a)
+    (eigval, eigvec) = (eigSH . trustSym) matr
+    k = min 3 (size eigval)
 
 -- | Generation of three-dimensional coordinates from 
 -- eigenvalues and eigenvectors.
-generateCoordinFromEigValAndVec ::
-     (Vector Double, Matrix Double) -> Matrix Double
-generateCoordinFromEigValAndVec (val, vec) =
-  vec Numeric.LinearAlgebra.<> diag val
+generateCoordinFromEigValAndVec :: (Vector Double, Matrix Double) -> Matrix Double
+generateCoordinFromEigValAndVec (val, vec) = vec Numeric.LinearAlgebra.<> diag val
 
--- | UTILITS. НАЧАЛО
+-- | Convert coordinate matrix to 
+-- distance matrix.
+coordMatrixToDistanceMatrix :: Matrix Double -> Matrix Double
+coordMatrixToDistanceMatrix matr =
+  let n = rows matr
+      dist i j = sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
+        where
+          [xi, yi, zi] = toList $ matr ! i
+          [xj, yj, zj] = toList $ matr ! j
+      dmatr =
+        build
+          (n, n)
+          (\i' j' ->
+             let (i, j) = (fromEnum i', fromEnum j')
+              in if j <= i
+                   then 0
+                   else dist i j)
+   in dmatr `add` (tr' dmatr)
+
+-- * Error Functions
+-- | Distance Error Function, type 1
+distanceErrorFunction1 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction1 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
+      f (i, j) =
+        (+) $
+        max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 + max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^ 2
+   in foldr f 0 ij
+
+-- | Distance Error Function, type 3
+distanceErrorFunction2 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction2 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
+      f (i, j) =
+        (+) $
+        max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 + max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^ 2
+   in foldr f 0 ij
+
+-- | Distance Error Function, type 3
+distanceErrorFunction3 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction3 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
+      f (i, j) =
+        (+) $
+        max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
+        max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^ 2
+   in foldr f 0 ij
+
+-- * Utils.
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
 changeMatrix :: Matrix Double -> (Int, Int) -> Double -> Matrix Double
 changeMatrix m (i, j) v =
@@ -204,15 +269,16 @@ isSymmetric matr =
 
 -- | Массив Ван-дер-Ваальсовых радиусов
 vdmr :: [Atom] -> [Double]
-vdmr = map (getVDWR' . get name)
+vdmr = map (getVDWR' . get aelem)
   where
-    getVDWR' a =
+    getVDWR' (Element a) =
       case a of
-        "C" -> 0.500
-        "H" -> 0.500
-        "N" -> 0.500
-        "O" -> 0.500
-        "S" -> 0.500
+        "H" -> 0.5 -- 1.000
+        "O" -> 0.5 -- 1.300
+        "N" -> 0.5 -- 1.400
+        "C" -> 0.5 -- 1.500
+        "S" -> 0.5 -- 1.900
+        othrewise -> error $ "vdmr not found for: " ++ show a
 
 -- | Определяет, связаны ли атомы
 isBonded :: ID -> ID -> [Bond] -> Bool
@@ -220,5 +286,4 @@ isBonded n m s = (n, m) `elem` bondsID s || (m, n) `elem` bondsID s
 
 -- | Возвращает массив пар связанных атомов, 
 bondsID :: [Bond] -> [(ID, ID)]
-bondsID = map (\x -> (get fid x, get sid x))
--- | UTILITS. КОНЕЦ
+bondsID = map (\x -> (get bfid x, get bsid x))
