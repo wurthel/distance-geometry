@@ -1,19 +1,23 @@
 module Main where
 
-import Data.Maybe
+import Data.Either
 import DistanceGeometry
 import Parser
+import Numeric.LinearAlgebra
+import Numeric.LinearAlgebra.Data
 
 main :: IO ()
 main = do
-  let (atoms, bonds) = parserMolV2000 "example/retinal.mol"
-  q <-
-    (randomDistanceMatrix .
-     fromJust .
-     triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms)
-      bonds
-  let p =
-        (generateCoordinFromEigValAndVec .
-         largestEigValAndVec . distanceToMetricMatrix)
-          q
-  print p
+  let (atoms, bonds) = parserMolV2000 "example/example.mol"
+  let 
+    s0@(u, l) = (triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms) bonds
+  s1 <- randomDistanceMatrix s0
+  let s2 = (generateCoordinFromEigValAndVec . largestEigValAndVec . distanceMatrixToMetricMatrix) s1
+  let dm = coordMatrixToDistanceMatrix s2
+      errf1 = distanceErrorFunction1 dm u l
+      errf2 = distanceErrorFunction2 dm u l
+      errf3 = distanceErrorFunction3 dm u l
+  print s2
+  print errf1
+  print errf2
+  print errf3
