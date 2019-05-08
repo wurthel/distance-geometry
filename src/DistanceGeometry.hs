@@ -16,12 +16,10 @@ module DistanceGeometry
   ) where
 
 import Control.Category
-import Data.Label
 import Data.List (foldl', zipWith3)
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import Numeric.LinearAlgebra.Devel
-import Prelude hiding ((.), id)
 import System.Random
 import Types
 

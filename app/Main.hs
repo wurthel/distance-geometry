@@ -18,7 +18,7 @@ main = do
       errf2 = distanceErrorFunction2 dm u l
       errf3 = distanceErrorFunction3 dm u l
   print atoms
-  writeMoleculeXYZ "test.xyz" atoms
+  writeMoleculeXYZ "test.xyz" "Comment Line" atoms
   print s2
   print errf1
   print errf2

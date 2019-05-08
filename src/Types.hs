@@ -2,49 +2,45 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Types where
+  
+import Control.Lens
 
-import Control.Category
-import Data.Label
-import Prelude hiding ((.), id)
+data Point = Point
+  { _x :: Double
+  , _y :: Double
+  , _z :: Double
+  } deriving (Show)
 
-newtype ID =
-  ID Int
-  deriving (Num, Enum, Eq, Ord, Show)
+data Atom = Atom
+  { _aserial :: Int
+  , _aelement :: String
+  , _acoord :: Point
+  } deriving (Show)
 
-newtype Element = 
-  Element String
-  deriving Show
+data Bond = Bond
+  { _bfid :: Int
+  , _bsid :: Int
+  , _btype :: Int
+  , _bster :: Int
+  , _btop :: Int
+  } deriving (Show)
 
-newtype BondType =
-  BondType Int
-  deriving (Num, Enum, Eq, Ord, Show)
+data Molecule = Molecule
+  { _atoms :: [Atom]
+  } deriving (Show)
 
-newtype BondSter =
-  BondSter Int
-  deriving (Num, Enum, Eq, Ord, Show)
+molecule = Molecule { _atoms = []}
 
-newtype BondTop =
-  BondTop Int
-  deriving (Num, Enum, Eq, Ord, Show)
+point = Point {_x = 1, _y = 0, _z = 0}
 
-type Point = (Double, Double, Double)
+atom = Atom {_aserial = 0, _aelement = "", _acoord = point}
 
-data Atom =
-  Atom
-    { _aid :: ID
-    , _aelem :: Element
-    , _acoord :: Point
-    }
-  deriving (Show)
+bond = Bond {_bfid = 0, _bsid = 0, _btype = 0, _bster = 0, _btop = 0}
 
-data Bond =
-  Bond
-    { _bfid :: ID
-    , _bsid :: ID
-    , _btype :: BondType
-    , _bster :: BondSter
-    , _btop :: BondTop
-    }
-  deriving (Show)
+makeLenses ''Point
 
-mkLabels [''Atom, ''Bond]
+makeLenses ''Atom
+
+makeLenses ''Molecule
+
+makeLenses ''Bond
