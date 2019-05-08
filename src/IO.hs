@@ -1,18 +1,26 @@
-module Parser
-  ( parserMolV2000
+module IO
+  ( 
+    readMoleculeMolV2000
+  , writeMoleculeXYZ
   ) where
 
 import Prelude hiding (readFile)
 
-import System.IO.Strict
+import Text.Printf (hPrintf)
+import System.IO
 import System.IO.Unsafe
+import System.Directory (renameFile)
+import Numeric.LinearAlgebra.Data
+import Data.Label
+import Prelude hiding ((.), id)
+
 import Types
 
 -- | Я рапсарсиваю файл неполность. 
 -- Смотри реализации addAtoms и addBonds:
 -- В .mol файле есть поля, предназачение которых мне неизвестно
-parserMolV2000 :: FilePath -> ([Atom], [Bond])
-parserMolV2000 inf =
+readMoleculeMolV2000 :: FilePath -> ([Atom], [Bond])
+readMoleculeMolV2000 inf =
   let txt = lines . unsafePerformIO . readFile $ inf
       counts_line = words $ txt !! 3
       count_atoms = read $ counts_line !! 0
@@ -44,3 +52,18 @@ parserMolV2000 inf =
           i4 = BondTop . read $ w !! 4
           bond = Bond i0 i1 i2 i3 i4
        in bond : addBond bs
+
+updateMoleculeXYZ :: [Atom] -> Matrix Double -> [Atom]
+updateMoleculeXYZ atomx matr = undefined
+
+writeMoleculeXYZ :: FilePath -> [Atom] -> IO ()
+writeMoleculeXYZ ouf atoms = do
+  (tmp_name, tmp_handle) <- openTempFile "." "temp"
+  mapM_ (writeData tmp_handle) atoms
+  hClose tmp_handle
+  renameFile tmp_name ouf
+  where 
+    writeData hdl atom = do
+      let (Element e) = get aelem atom 
+          (x, y, z) = get acoord atom
+      hPrintf hdl "%s\t%8.6f\t%8.6f\t%8.6f\n" e x y z

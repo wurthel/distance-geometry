@@ -24,6 +24,7 @@ dependencies:
 - fclabels
 - hmatrix
 - mtl
+- directory
 - random
 
 library:

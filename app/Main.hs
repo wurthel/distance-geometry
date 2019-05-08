@@ -2,13 +2,13 @@ module Main where
 
 import Data.Either
 import DistanceGeometry
-import Parser
+import IO
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 
 main :: IO ()
 main = do
-  let (atoms, bonds) = parserMolV2000 "example/example.mol"
+  let (atoms, bonds) = readMoleculeMolV2000 "example/example.mol"
   let 
     s0@(u, l) = (triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms) bonds
   s1 <- randomDistanceMatrix s0
@@ -17,6 +17,8 @@ main = do
       errf1 = distanceErrorFunction1 dm u l
       errf2 = distanceErrorFunction2 dm u l
       errf3 = distanceErrorFunction3 dm u l
+  print atoms
+  writeMoleculeXYZ "test.xyz" atoms
   print s2
   print errf1
   print errf2
