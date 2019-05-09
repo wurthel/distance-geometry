@@ -2,38 +2,50 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Types where
-  
+
 import Control.Lens
 
-data Point = Point
-  { _x :: Double
-  , _y :: Double
-  , _z :: Double
-  } deriving (Show)
+type Serial = Int
 
-data Atom = Atom
-  { _aserial :: Int
-  , _aelement :: String
-  , _acoord :: Point
-  } deriving (Show)
+type Element = String
 
-data Bond = Bond
-  { _bfid :: Int
-  , _bsid :: Int
-  , _btype :: Int
-  , _bster :: Int
-  , _btop :: Int
-  } deriving (Show)
+data Point =
+  Point
+    { _x :: Double
+    , _y :: Double
+    , _z :: Double
+    }
+  deriving (Show)
 
-data Molecule = Molecule
-  { _atoms :: [Atom]
-  } deriving (Show)
+data Atom =
+  Atom
+    { _aelement :: Element
+    , _acoordin :: Point
+    , _avdwrad :: Double
+    }
+  deriving (Show)
 
-molecule = Molecule { _atoms = []}
+data Bond =
+  Bond
+    { _bfid :: Serial
+    , _bsid :: Serial
+    , _btype :: Int
+    , _bster :: Int
+    , _btop :: Int
+    }
+  deriving (Show)
 
-point = Point {_x = 1, _y = 0, _z = 0}
+data Molecule =
+  Molecule
+    { _atoms :: [Atom]
+    }
+  deriving (Show)
 
-atom = Atom {_aserial = 0, _aelement = "", _acoord = point}
+molecule = Molecule {_atoms = []}
+
+point = Point {_x = 0, _y = 0, _z = 0}
+
+atom = Atom {_aelement = "", _acoordin = point, _avdwrad = 0}
 
 bond = Bond {_bfid = 0, _bsid = 0, _btype = 0, _bster = 0, _btop = 0}
 

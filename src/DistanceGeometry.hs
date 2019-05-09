@@ -1,21 +1,21 @@
 module DistanceGeometry
-  ( 
   -- * Main functions
-    generateDistanceBoundsMatrix
+  ( generateDistanceBoundsMatrix
   , triangleInequalitySmoothingFloyd
   , randomDistanceMatrix
   , distanceMatrixToMetricMatrix
   , largestEigValAndVec
   , generateCoordinFromEigValAndVec
   , coordMatrixToDistanceMatrix
-
+  , updateCoordinates
   -- * Error Functions
   , distanceErrorFunction1
   , distanceErrorFunction2
   , distanceErrorFunction3
   ) where
 
-import Control.Category
+import Control.Lens
+import Control.Monad.State
 import Data.List (foldl', zipWith3)
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
@@ -32,20 +32,20 @@ import Types
 -- bound between any two atoms is the sum of their
 -- van der Waals radii). If the upper bounds are not
 -- known then we shall enter a default value of 100.
-generateDistanceBoundsMatrix :: [Atom] -> [Bond] -> (Matrix Double, Matrix Double)
-generateDistanceBoundsMatrix atoms bonds =
-  let n = length atoms
-      upperDist (ID i) (ID j) = 100
-      lowerDist (ID i) (ID j) = (vdmr atoms !! (i - 1)) + (vdmr atoms !! (j - 1))
-      fixedDist (ID i) (ID j) = sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
+generateDistanceBoundsMatrix :: Molecule -> [Bond] -> (Matrix Double, Matrix Double)
+generateDistanceBoundsMatrix molecule bonds =
+  let n = views atoms length molecule
+      upperDist _ _ = 100
+      lowerDist i j = getAtom i molecule ^. avdwrad + getAtom j molecule ^. avdwrad
+      fixedDist i j = sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
         where
-          (xi, yi, zi) = get acoord (atoms !! (i - 1))
-          (xj, yj, zj) = get acoord (atoms !! (j - 1))
+          (Point xi yi zi) = getAtom i molecule ^. acoordin
+          (Point xj yj zj) = getAtom j molecule ^. acoordin
       upper =
         build
           (n, n)
           (\i' j' ->
-             let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
+             let (i, j) = (fromEnum i', fromEnum j')
               in if i == j
                    then 0
                    else if isBonded i j bonds
@@ -55,7 +55,7 @@ generateDistanceBoundsMatrix atoms bonds =
         build
           (n, n)
           (\i' j' ->
-             let (i, j) = (ID . fromEnum $ i' + 1, ID . fromEnum $ j' + 1)
+             let (i, j) = (fromEnum i', fromEnum j')
               in if i == j
                    then 0
                    else if isBonded i j bonds
@@ -101,7 +101,7 @@ triangleInequalitySmoothingFloyd (upper, lower) =
           --then Left "Erroneous Bounds"
           --else Right (u3, l3)
       (upper', lower') = foldl' smoothing (upper, lower) kij
-      upper'' =
+      newUpper =
         build
           (n, n)
           (\i' j' ->
@@ -109,7 +109,7 @@ triangleInequalitySmoothingFloyd (upper, lower) =
               in if i < j
                    then upper' `atIndex` (i, j)
                    else upper' `atIndex` (j, i))
-      lower'' =
+      newLower =
         build
           (n, n)
           (\i' j' ->
@@ -117,7 +117,7 @@ triangleInequalitySmoothingFloyd (upper, lower) =
               in if i < j
                    then lower' `atIndex` (i, j)
                    else lower' `atIndex` (j, i))
-   in (upper'', lower'')
+   in (newUpper, newLower)
 
 -- | Generation of a distance matrix by random selection 
 -- of distances between the bounds.
@@ -161,8 +161,8 @@ distanceMatrixToMetricMatrix matr =
                    then 0
                    else matr `atIndex` (i, j))
       d0 i =
-        (1 / m) * (sumElements $ (matr ! i) ^ 2) -
-        (1 / m ^ 2) * (sumElements $ uTriangleMatr ^ 2)
+        (1 / m) * (sumElements $ (matr ! i) ^ 2) - (1 / m ^ 2) *
+        (sumElements $ uTriangleMatr ^ 2)
    in build
         (n, n)
         (\i' j' ->
@@ -218,8 +218,8 @@ distanceErrorFunction1 dist upper lower =
       l2 = lower ^ 2
       ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
       f (i, j) =
-        (+) $
-        max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 + max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^ 2
+        (+) $ max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 + max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^
+        2
    in foldr f 0 ij
 
 -- | Distance Error Function, type 3
@@ -231,8 +231,9 @@ distanceErrorFunction2 dist upper lower =
       l2 = lower ^ 2
       ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
       f (i, j) =
-        (+) $
-        max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 + max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^ 2
+        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
+        max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^
+        2
    in foldr f 0 ij
 
 -- | Distance Error Function, type 3
@@ -244,10 +245,20 @@ distanceErrorFunction3 dist upper lower =
       l2 = lower ^ 2
       ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
       f (i, j) =
-        (+) $
-        max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
-        max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^ 2
+        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
+        max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^
+        2
    in foldr f 0 ij
+
+updateCoordinates :: Matrix Double -> Molecule -> Molecule
+updateCoordinates coord mol = set atoms newatoms mol
+  where
+    newatoms = zipWith updatec (toRows coord) (view atoms mol)
+    updatec coord' =
+      execState
+        (do acoordin . x .= coord' ! 0
+            acoordin . y .= coord' ! 1
+            acoordin . z .= coord' ! 2)
 
 -- * Utils.
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
@@ -265,23 +276,11 @@ isSymmetric matr =
       s = [matr ! i ! j == matr ! j ! i | i <- [0 .. r - 1], j <- [i .. c - 1]]
    in r == c && and s
 
--- | Массив Ван-дер-Ваальсовых радиусов
-vdmr :: [Atom] -> [Double]
-vdmr = map (getVDWR' . get aelem)
-  where
-    getVDWR' (Element a) =
-      case a of
-        "H" -> 0.5 -- 1.000
-        "O" -> 0.5 -- 1.300
-        "N" -> 0.5 -- 1.400
-        "C" -> 0.5 -- 1.500
-        "S" -> 0.5 -- 1.900
-        othrewise -> error $ "vdmr not found for: " ++ show a
-
 -- | Определяет, связаны ли атомы
-isBonded :: ID -> ID -> [Bond] -> Bool
-isBonded n m s = (n, m) `elem` bondsID s || (m, n) `elem` bondsID s
+isBonded :: Serial -> Serial -> [Bond] -> Bool
+isBonded n m s = (n, m) `elem` bonds' s || (m, n) `elem` bonds' s
+  where
+    bonds' = map (\x -> (view bfid x, view bsid x))
 
--- | Возвращает массив пар связанных атомов, 
-bondsID :: [Bond] -> [(ID, ID)]
-bondsID = map (\x -> (get bfid x, get bsid x))
+getAtom :: Serial -> Molecule -> Atom
+getAtom i = views atoms (!! i)
