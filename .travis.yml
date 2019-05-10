@@ -39,7 +39,7 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
-- stack install hmatrix
+- sudo apt-get install libblas-dev liblapack-dev
 - stack install
 # - mv /home/travis/.local/bin/insert-molecule-exe .
 
