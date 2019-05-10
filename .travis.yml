@@ -39,6 +39,7 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
+- stack install hmatrix
 - stack install
 # - mv /home/travis/.local/bin/insert-molecule-exe .
 
