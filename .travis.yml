@@ -40,13 +40,13 @@ install:
 script:
 # Build the package, its tests, and its docs and run the tests
 - stack install
-- mv /home/travis/.local/bin/insert-molecule-exe .
+# - mv /home/travis/.local/bin/insert-molecule-exe .
 
-deploy:
-  provider: pages
-  target_branch: master-linux-version
-  skip_cleanup: true
-  github_token: $TOKEN  # Set in the settings page of your repository, as a secure variable
-  keep_history: true
-  on:
-    branch: master
+# deploy:
+#   provider: pages
+#   target_branch: master-linux-version
+#   skip_cleanup: true
+#   github_token: $TOKEN  # Set in the settings page of your repository, as a secure variable
+#   keep_history: true
+#   on:
+#     branch: master
