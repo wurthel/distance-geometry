@@ -8,7 +8,7 @@ import Prelude hiding (readFile)
 import Control.Lens
 import Control.Monad.State
 import Numeric.LinearAlgebra.Data
-import System.Directory (renameFile)
+import System.Directory
 import System.IO
 import System.IO.Unsafe
 import Text.Printf (hPrintf)

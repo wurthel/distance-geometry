@@ -3,4 +3,6 @@ distance-geometry-exe*
 distance-geometry.cabal
 .DS_Store
 .hindent.yaml
+test/
+!test/Spec.hs
 *~
