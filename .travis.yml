@@ -40,6 +40,7 @@ install:
 
 script:
 # Build the package, its tests, and its docs and run the tests
+- mkdir test/results
 - stack build
 - stack test
 
