@@ -5,10 +5,11 @@ import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import System.Directory
 
+idir = "test/molecules"
+odir = "test/results"
+
 main :: IO ()
 main = do
-  let idir = "test/molecules"
-  let odir = "test/results"
   putStrLn ""
   putStrLn "generateOneMolecule: Begin"
   generateOneMolecule idir odir "example"
@@ -16,8 +17,8 @@ main = do
   putStrLn "generateOneMolecule: End"
   putStrLn ""
   putStrLn "generateManyMolecules: Begin"
-  generateManyMolecules idir odir "example" 5
-  generateManyMolecules idir odir "methan" 5
+  generateManyMolecules idir odir "example" 60
+  generateManyMolecules idir odir "methan" 100
   putStrLn "generateManyMolecules: End"
 
 generateOneMolecule idir odir mol

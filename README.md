@@ -14,3 +14,25 @@ To build `distance-geometry` with Stackage dependencies, use the `stack` tool:
 ### Build Status
 
 [![Build Status](https://travis-ci.org/wurthel/distance-geometry.svg?branch=master)](https://travis-ci.org/wurthel/distance-geometry)
+
+An example of test
+----------
+To run test: `stack test`
+See [test/Spec.hs](test/test/Spec.hs)
+```haskell
+idir = "test/molecules"
+odir = "test/results"
+
+main :: IO ()
+main = do
+  putStrLn ""
+  putStrLn "generateOneMolecule: Begin"
+  generateOneMolecule idir odir "example"
+  generateOneMolecule idir odir "methan"
+  putStrLn "generateOneMolecule: End"
+  putStrLn ""
+  putStrLn "generateManyMolecules: Begin"
+  generateManyMolecules idir odir "example" 60
+  generateManyMolecules idir odir "methan" 100
+  putStrLn "generateManyMolecules: End"
+```
