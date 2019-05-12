@@ -1,6 +1,7 @@
 module DistanceGeometry
-  -- * Main functions
-  ( generateDistanceBoundsMatrix
+  ( 
+    -- * Main functions
+    generateDistanceBoundsMatrix
   , triangleInequalitySmoothingFloyd
   , randomDistanceMatrix
   , distanceMatrixToMetricMatrix
