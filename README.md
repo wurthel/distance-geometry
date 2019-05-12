@@ -18,7 +18,8 @@ To build `distance-geometry` with Stackage dependencies, use the `stack` tool:
 An example of test
 ----------
 To run test: `stack test`
-See [test/Spec.hs](test/test/Spec.hs)
+
+See [test/Spec.hs](test/Spec.hs)
 ```haskell
 idir = "test/molecules"
 odir = "test/results"
