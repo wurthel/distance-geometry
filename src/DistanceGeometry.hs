@@ -188,7 +188,7 @@ largestEigValAndVec matr =
 -- | Generation of three-dimensional coordinates from 
 -- eigenvalues and eigenvectors.
 generateCoordinFromEigValAndVec :: (Vector Double, Matrix Double) -> Matrix Double
-generateCoordinFromEigValAndVec (val, vec) = vec Numeric.LinearAlgebra.<> diag val
+generateCoordinFromEigValAndVec (val, vec) = vec Numeric.LinearAlgebra.<> (sqrt . diag) val
 
 -- | Convert coordinate matrix to 
 -- distance matrix.
