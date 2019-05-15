@@ -2,6 +2,7 @@ module Main where
 
 import Data.Either
 import DistanceGeometry
+import Generators
 import IO
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
@@ -18,5 +19,5 @@ main = do
   putStrLn "generateOneMolecule: End"
   putStrLn ""
   putStrLn "generateManyMolecules: Begin"
-  --generateManyMolecules idir odir "C2Br4" 0.01 100
+  generateManyMolecules idir odir "C2Br4" 0.01 100
   putStrLn "generateManyMolecules: End"

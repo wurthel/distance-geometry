@@ -59,6 +59,7 @@ vdwr a =
     "N" -> 0.700 -- 0.5 -- 1.400
     "C" -> 0.750 -- 0.5 -- 1.500
     "S" -> 0.950 -- 0.5 -- 1.900
+    "Br"-> 0.950
     othrewise -> error $ "vdwr not found for: " ++ show a
 
 -- * Write
