@@ -29,11 +29,9 @@ main = do
   putStrLn ""
   putStrLn "generateOneMolecule: Begin"
   generateOneMolecule idir odir "example"
-  generateOneMolecule idir odir "methan"
   putStrLn "generateOneMolecule: End"
   putStrLn ""
   putStrLn "generateManyMolecules: Begin"
-  generateManyMolecules idir odir "example" 60
-  generateManyMolecules idir odir "methan" 100
+  generateManyMolecules idir odir "C2Br4" 0.01 100
   putStrLn "generateManyMolecules: End"
 ```
