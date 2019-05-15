@@ -1,7 +1,6 @@
 module DistanceGeometry
-  ( 
-    -- * Main functions
-    generateDistanceBoundsMatrix
+    -- * Steps of algorithm
+  ( generateDistanceBoundsMatrix
   , triangleInequalitySmoothingFloyd
   , randomDistanceMatrix
   , distanceMatrixToMetricMatrix
@@ -9,10 +8,12 @@ module DistanceGeometry
   , generateCoordinFromEigValAndVec
   , coordMatrixToDistanceMatrix
   , updateCoordinates
+  
   -- * Error Functions
   , distanceErrorFunction1
   , distanceErrorFunction2
   , distanceErrorFunction3
+  , chiralErrorFunction
   ) where
 
 import Control.Lens
@@ -24,7 +25,7 @@ import Numeric.LinearAlgebra.Devel
 import System.Random
 import Types
 
--- * Main functions
+-- * Steps of algorithm
 -- | Generate of a distance bounds matrix
 -- If we know the bound distance between atoms we set it
 -- in upper and lower bounds matrix. If we assime that the atoms have 
@@ -33,11 +34,13 @@ import Types
 -- bound between any two atoms is the sum of their
 -- van der Waals radii). If the upper bounds are not
 -- known then we shall enter a default value of 100.
-generateDistanceBoundsMatrix :: Molecule -> [Bond] -> (Matrix Double, Matrix Double)
+generateDistanceBoundsMatrix ::
+     Molecule -> [Bond] -> (Matrix Double, Matrix Double)
 generateDistanceBoundsMatrix molecule bonds =
   let n = views atoms length molecule
       upperDist _ _ = 100
-      lowerDist i j = getAtom i molecule ^. avdwrad + getAtom j molecule ^. avdwrad
+      lowerDist i j =
+        getAtom i molecule ^. avdwrad + getAtom j molecule ^. avdwrad
       fixedDist i j = sqrt $ (xj - xi) ^ 2 + (yj - yi) ^ 2 + (zj - zi) ^ 2
         where
           (Point xi yi zi) = getAtom i molecule ^. acoordin
@@ -70,7 +73,12 @@ triangleInequalitySmoothingFloyd ::
      (Matrix Double, Matrix Double) -> (Matrix Double, Matrix Double)
 triangleInequalitySmoothingFloyd (upper, lower) =
   let n = rows upper
-      kij = [(k, i, j) | k <- [0 .. n - 1], i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      kij =
+        [ (k, i, j)
+        | k <- [0 .. n - 1]
+        , i <- [0 .. n - 2]
+        , j <- [i + 1 .. n - 1]
+        ]
       smoothing (u0, l0) (k, i, j) = do
         let (u1, l1) =
               if e1 > e2 + e3
@@ -99,8 +107,6 @@ triangleInequalitySmoothingFloyd (upper, lower) =
         if l3 ! i ! j > u3 ! i ! j
           then error "Erroneous Bounds"
           else (u3, l3)
-          --then Left "Erroneous Bounds"
-          --else Right (u3, l3)
       (upper', lower') = foldl' smoothing (upper, lower) kij
       newUpper =
         build
@@ -162,8 +168,9 @@ distanceMatrixToMetricMatrix matr =
                    then 0
                    else matr `atIndex` (i, j))
       d0 i =
-        (1 / m) * (sumElements $ (matr ! i) ^ 2) - (1 / m ^ 2) *
-        (sumElements $ uTriangleMatr ^ 2)
+        (1 / m) * sumElements $ (matr ! i) ^ 2 - (1 / m ^ 2) * sumElements $
+        uTriangleMatr ^
+        2
    in build
         (n, n)
         (\i' j' ->
@@ -187,8 +194,10 @@ largestEigValAndVec matr =
 
 -- | Generation of three-dimensional coordinates from 
 -- eigenvalues and eigenvectors.
-generateCoordinFromEigValAndVec :: (Vector Double, Matrix Double) -> Matrix Double
-generateCoordinFromEigValAndVec (val, vec) = vec Numeric.LinearAlgebra.<> (sqrt . diag) val
+generateCoordinFromEigValAndVec ::
+     (Vector Double, Matrix Double) -> Matrix Double
+generateCoordinFromEigValAndVec (val, vec) =
+  vec Numeric.LinearAlgebra.<> (sqrt . diag) val
 
 -- | Convert coordinate matrix to 
 -- distance matrix.
@@ -209,48 +218,7 @@ coordMatrixToDistanceMatrix matr =
                    else dist i j)
    in dmatr `add` (tr' dmatr)
 
--- * Error Functions
--- | Distance Error Function, type 1
-distanceErrorFunction1 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction1 dist upper lower =
-  let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
-      f (i, j) =
-        (+) $ max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 + max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^
-        2
-   in foldr f 0 ij
-
--- | Distance Error Function, type 3
-distanceErrorFunction2 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction2 dist upper lower =
-  let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
-      f (i, j) =
-        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
-        max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^
-        2
-   in foldr f 0 ij
-
--- | Distance Error Function, type 3
-distanceErrorFunction3 :: Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction3 dist upper lower =
-  let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1], i /= j]
-      f (i, j) =
-        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
-        max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^
-        2
-   in foldr f 0 ij
-
+-- | Update coordinates
 updateCoordinates :: Matrix Double -> Molecule -> Molecule
 updateCoordinates coord mol = set atoms newatoms mol
   where
@@ -261,6 +229,57 @@ updateCoordinates coord mol = set atoms newatoms mol
             acoordin . y .= coord' ! 1
             acoordin . z .= coord' ! 2)
 
+-- * Error Functions
+-- | Distance error function, var 1.
+-- 
+distanceErrorFunction1 ::
+     Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction1 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      f (i, j) =
+        (+) $ max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 +
+        max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^ 2
+   in foldr f 0 ij
+
+-- | Distance error function, var 2
+--
+distanceErrorFunction2 ::
+     Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction2 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      f (i, j) =
+        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
+        max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^ 2
+   in foldr f 0 ij
+
+-- | Distance error function, var 3
+-- 
+distanceErrorFunction3 ::
+     Matrix Double -> Matrix Double -> Matrix Double -> Double
+distanceErrorFunction3 dist upper lower =
+  let n = rows dist
+      d2 = dist ^ 2
+      u2 = upper ^ 2
+      l2 = lower ^ 2
+      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      f (i, j) =
+        (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
+        max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^ 2
+   in foldr f 0 ij
+
+-- | Chiral error function.
+-- 
+chiralErrorFunction :: Matrix Double -> Matrix Double -> Matrix Double -> Double
+chiralErrorFunction dist upper lower = undefined
+
 -- * Utils.
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
 changeMatrix :: Matrix Double -> (Int, Int) -> Double -> Matrix Double
@@ -270,6 +289,7 @@ changeMatrix m (i, j) v =
     writeMatrix m' i j v
     return m'
 
+-- | Check the symmetric matrix
 isSymmetric :: Matrix Double -> Bool
 isSymmetric matr =
   let r = rows matr
@@ -283,5 +303,6 @@ isBonded n m s = (n, m) `elem` bonds' s || (m, n) `elem` bonds' s
   where
     bonds' = map (\x -> (view bfid x, view bsid x))
 
+-- | Get atom from molecule
 getAtom :: Serial -> Molecule -> Atom
 getAtom i = views atoms (!! i)

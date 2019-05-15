@@ -1,5 +1,7 @@
-module IO
-  ( readMolV2000
+module IO   
+  ( -- * Read
+    readMolV2000
+    -- * Write
   , writeXYZ
   ) where
 
@@ -15,9 +17,8 @@ import Text.Printf (hPrintf)
 
 import Types
 
--- | Я рапсарсиваю файл неполность. 
--- Смотри реализации addAtoms и addBonds:
--- В .mol файле есть поля, предназачение которых мне неизвестно
+-- * Read
+-- | Read molecule at *.pdb format (V2000)
 readMolV2000 :: FilePath -> (Molecule, [Bond])
 readMolV2000 inf =
   let txt = (lines . unsafePerformIO . readFile) inf
@@ -49,6 +50,19 @@ readMolV2000 inf =
             btop .= read (w !! 4))
         bond
 
+-- | Get VDW radius
+vdwr :: Element -> Double
+vdwr a =
+  case a of
+    "H" -> 0.500 -- 0.5 -- 1.000
+    "O" -> 0.650 -- 0.5 -- 1.300
+    "N" -> 0.700 -- 0.5 -- 1.400
+    "C" -> 0.750 -- 0.5 -- 1.500
+    "S" -> 0.950 -- 0.5 -- 1.900
+    othrewise -> error $ "vdwr not found for: " ++ show a
+
+-- * Write
+-- | Write molecule in *.xyz format
 writeXYZ :: FilePath -> String -> Molecule -> IO ()
 writeXYZ ouf comment molecule = do
   (tmp_name, tmp_handle) <- openTempFile "." "temp"
@@ -62,14 +76,3 @@ writeXYZ ouf comment molecule = do
       let e = view aelement atom
           (Point x y z) = view acoordin atom
       hPrintf hdl "%s\t%8.6f\t%8.6f\t%8.6f\n" e x y z
-
--- | 
-vdwr :: Element -> Double
-vdwr a =
-  case a of
-    "H" -> 0.5 -- 1.000
-    "O" -> 0.5 -- 1.300
-    "N" -> 0.5 -- 1.400
-    "C" -> 0.5 -- 1.500
-    "S" -> 0.5 -- 1.900
-    othrewise -> error $ "vdwr not found for: " ++ show a
