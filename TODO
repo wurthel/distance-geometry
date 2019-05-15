@@ -1,6 +1,6 @@
 # -*- mode: org -*-
 
-** TODO DG Algorithm [8/9]
+** TODO DG Algorithm [8/10]
   - [X] Initiazilation of bounds matrix
   - [X] Triangle-inequality smoothing of bounds
   - [X] Generating a random distance matrix
