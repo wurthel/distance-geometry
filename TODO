@@ -1,0 +1,18 @@
+# -*- mode: org -*-
+
+** TODO DG Algorithm [7/8]
+  - [X] Initiazilation of bounds matrix
+  - [X] Triangle-inequality smoothing of bounds
+  - [X] Generating a random distance matrix
+  - [ ] Metrization
+  - [X] Conversion of the distance matrix to a metric matrix
+  - [X] Determination of the three largest eigval and eigvec
+  - [X] Generation coordinates
+  - [X] Refinement of the coordinates by minimization of an error function
+  
+** TODO I/O [2/5]
+  - [X] Parser of *.mol files
+  - [ ] Parser of *.pdb files
+  - [ ] Writer *.mol files
+  - [ ] Writer *.pdb files
+  - [X] Writer *.xyz files
