@@ -1,14 +1,20 @@
 # -*- mode: org -*-
 
-** TODO DG Algorithm [7/8]
+** TODO DG Algorithm [8/9]
   - [X] Initiazilation of bounds matrix
   - [X] Triangle-inequality smoothing of bounds
   - [X] Generating a random distance matrix
-  - [ ] Metrization
+  - [ ] Smooth the distance (full metrization)
+  - [ ] Smooth the distance (partial metrization)
   - [X] Conversion of the distance matrix to a metric matrix
   - [X] Determination of the three largest eigval and eigvec
   - [X] Generation coordinates
   - [X] Refinement of the coordinates by minimization of an error function
+    - [X] Distance error function, ver 1
+    - [X] Distance error function, var 2
+    - [X] Distance error function, var 3
+    - [ ] Chiral error function
+  - [X] Embedding coordinates
   
 ** TODO I/O [2/5]
   - [X] Parser of *.mol files
