@@ -16,31 +16,9 @@ generateOneMolecule ::
      FilePath -- ^ Input directory
   -> FilePath -- ^ Output dorectory
   -> FilePath -- ^ Molecule
+  -> Double -- ^ Error
   -> IO ()
-generateOneMolecule idir odir mol = do
-  let (atoms, bonds) = readMolV2000 (idir ++ "/" ++ mol ++ ".mol")
-  let s0@(u, l) =
-        (triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms) bonds
-  s1 <- randomDistanceMatrix s0
-  let s2 =
-        (generateCoordinFromEigValAndVec .
-         largestEigValAndVec . distanceMatrixToMetricMatrix)
-          s1
-      newmole = updateCoordinates s2 atoms
-  -- Write result molecule in output files
-  writeXYZ (odir ++ "/" ++ mol ++ ".xyz") "Comment" newmole
-  -- Write logs in output files
-  let dm = coordMatrixToDistanceMatrix s2
-      errf1 = distanceErrorFunction1 dm u l
-      errf2 = distanceErrorFunction2 dm u l
-      errf3 = distanceErrorFunction3 dm u l
-  let logs = (show newmole ++ "\n") ++
-          ("Errf1 = " ++ show errf1 ++ "\n") ++
-          ("Errf2 = " ++ show errf2 ++ "\n") ++
-          ("Errf3 = " ++ show errf3 ++ "\n")
-  writeFile (odir ++ "/" ++ mol ++ ".log") logs
-  -- Print to console
-  putStrLn ("generateOneMolecule: " ++ mol ++ ": " ++ " OK!")
+generateOneMolecule idir odir mol err = generateManyMolecules idir odir mol err 1
 
 generateManyMolecules ::
      FilePath -- ^ Input directory
@@ -52,9 +30,9 @@ generateManyMolecules ::
 generateManyMolecules idir odir mol err n = do
   let odir' = odir ++ "/" ++ mol
   doesPathExist odir' >>= (`createDirectoryIfMissing` odir')
-  step 1
+  step odir' 1
   where
-    step s
+    step odir s
       | s > n = return ()
       | otherwise = do
         let (atoms, bonds) = readMolV2000 (idir ++ "/" ++ mol ++ ".mol")
@@ -67,22 +45,23 @@ generateManyMolecules idir odir mol err n = do
                largestEigValAndVec . distanceMatrixToMetricMatrix)
                 s1
         let dm = coordMatrixToDistanceMatrix s2
-            errf1 = distanceErrorFunction1 dm u l
-            errf2 = distanceErrorFunction2 dm u l
-            errf3 = distanceErrorFunction3 dm u l
+            derr = distanceErrorFunction dm u l bonds
+            cerr = 0
         let newmole = updateCoordinates s2 atoms
         let logs =
               (show newmole ++ "\n") ++
-                ("Errf1 = " ++ show errf1 ++ "\n") ++
-                ("Errf2 = " ++ show errf2 ++ "\n") ++
-                ("Errf3 = " ++ show errf3 ++ "\n")
-        if errf1 + errf2 + errf3 > err
-          then step s
+                ("Derr = " ++ show derr ++ "\n") ++
+                ("Cerr = " ++ show cerr ++ "\n")
+        if derr + cerr > err
+          then step odir s
           else do
+            print dm
+            print u
+            print l
             -- Write result molecule in output files
             writeXYZ (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".xyz") "Comment" newmole
             -- Write logs in output files
             writeFile (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".log") logs
             -- Print to console
             putStrLn ("generateManyMolecules: " ++ mol ++ ": step " ++ show s ++ ": OK!")
-            step (s+1)
+            step odir (s+1)
