@@ -8,11 +8,9 @@ module DistanceGeometry
   , generateCoordinFromEigValAndVec
   , coordMatrixToDistanceMatrix
   , updateCoordinates
-  
+  , isBonded
   -- * Error Functions
-  , distanceErrorFunction1
-  , distanceErrorFunction2
-  , distanceErrorFunction3
+  , distanceErrorFunction
   , chiralErrorFunction
   ) where
 
@@ -222,55 +220,28 @@ updateCoordinates coord mol = set atoms newatoms mol
             acoordin . z .= coord' ! 2)
 
 -- * Error Functions
--- | Distance error function, var 1.
--- 
-distanceErrorFunction1 ::
-     Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction1 dist upper lower =
+-- | Distance error function.
+distanceErrorFunction ::
+     Matrix Double -> Matrix Double -> Matrix Double -> [Bond] -> Double
+distanceErrorFunction dist upper lower bonds =
   let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
-      f (i, j) =
+      [d2, u2, l2] = map (^2) [dist, upper, lower]
+      ij' = [(i, j)| i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      ij = filter (\(i,j) -> not $ isBonded i j bonds) ij'
+      f1 (i, j) =
         (+) $ max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 +
         max 0 (l2 ! i ! j ^ 2 - d2 ! i ! j) ^ 2
-   in foldr f 0 ij
-
--- | Distance error function, var 2
---
-distanceErrorFunction2 ::
-     Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction2 dist upper lower =
-  let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
-      f (i, j) =
+      f2 (i, j) =
         (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
         max 0 (l2 ! i ! j / d2 ! i ! j - 1) ^ 2
-   in foldr f 0 ij
-
--- | Distance error function, var 3
--- 
-distanceErrorFunction3 ::
-     Matrix Double -> Matrix Double -> Matrix Double -> Double
-distanceErrorFunction3 dist upper lower =
-  let n = rows dist
-      d2 = dist ^ 2
-      u2 = upper ^ 2
-      l2 = lower ^ 2
-      ij = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
-      f (i, j) =
+      f3 (i, j) =
         (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
         max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^ 2
-   in foldr f 0 ij
-
+   in foldr f1 0 ij + foldr f2 0 ij + foldr f3 0 ij
 -- | Chiral error function.
 -- 
 chiralErrorFunction :: Matrix Double -> Matrix Double -> Matrix Double -> Double
-chiralErrorFunction dist upper lower = undefined
+chiralErrorFunction coord upper lower = undefined
 
 -- * Utils.
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
@@ -291,9 +262,8 @@ isSymmetric matr =
 
 -- | Определяет, связаны ли атомы
 isBonded :: Serial -> Serial -> [Bond] -> Bool
-isBonded n m s = (n, m) `elem` bonds' s || (m, n) `elem` bonds' s
-  where
-    bonds' = map (\x -> (view bfid x, view bsid x))
+isBonded n m s = (n, m) `elem` bonds s || (m, n) `elem` bonds s
+  where bonds = map (\x -> (view bfid x, view bsid x))
 
 -- | Get atom from molecule
 getAtom :: Serial -> Molecule -> Atom
