@@ -27,13 +27,6 @@ import Types
 
 -- * Steps of algorithm
 -- | Generate of a distance bounds matrix
--- If we know the bound distance between atoms we set it
--- in upper and lower bounds matrix. If we assime that the atoms have 
--- van der Waals radii, then we can set all the other lower
--- bounds as sum of van der Waals radii (the default lower
--- bound between any two atoms is the sum of their
--- van der Waals radii). If the upper bounds are not
--- known then we shall enter a default value of 100.
 generateDistanceBoundsMatrix ::
      Molecule -> [Bond] -> (Matrix Double, Matrix Double)
 generateDistanceBoundsMatrix molecule bonds =
@@ -168,9 +161,8 @@ distanceMatrixToMetricMatrix matr =
                    then 0
                    else matr `atIndex` (i, j))
       d0 i =
-        (1 / m) * sumElements $ (matr ! i) ^ 2 - (1 / m ^ 2) * sumElements $
-        uTriangleMatr ^
-        2
+        (1 / m) * (sumElements $ (matr ! i) ^ 2) - (1 / m ^ 2) * 
+        (sumElements $ uTriangleMatr ^ 2)
    in build
         (n, n)
         (\i' j' ->
