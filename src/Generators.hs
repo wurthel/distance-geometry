@@ -37,29 +37,25 @@ generateManyMolecules idir odir mol err n = do
       | s > n = return ()
       | otherwise = do
         let (atoms, bonds) = readMolV2000 (idir ++ "/" ++ mol ++ ".mol")
-        let s0@(u, l) =
-              (triangleSmooth . generateDistBoundsMatr atoms)
-                bonds
+        let s0@(u, l) = (triangleSmooth . generateDistBoundsMatr atoms) bonds
         s1 <- randomDistMatr s0
-        let s2 =
-              (generateCoorFromEigValVec .
-               largestEigValVec . distMatrToMetricMatr)
-                s1
-        let dm = coordMatrToDistMatr s2
-            derr = distanceErrorFunction dm u l bonds
-            cerr = 0
+        let s2 = (generateCoorFromEigValVec . largestEigValVec . distMatrToMetricMatr) s1
+        let derr = distanceErrorFunction s2 u l bonds
+            cerr = chiralErrorFunction s2 u l bonds
         if derr + cerr > err
           then step odir s
           else do
             -- Write result molecule in output files
             let newmole = updateCoord s2 atoms
             writeXYZ (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".xyz") "Comment" newmole
+            
             -- Write logs in output files
             let logs =
                  show newmole ++ "\n" ++
-                 "Derr = " ++ show derr ++ "\n" ++
-                 "Cerr = " ++ show cerr ++ "\n"
+                 "Distance error = " ++ show derr ++ "\n" ++
+                 "Chiral error = " ++ show cerr ++ "\n"
             writeFile (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".log") logs
+            
             -- Print to console
             putStrLn ("generateManyMolecules: " ++ mol ++ ": step " ++ show s ++ ": OK!")
             step odir (s+1)
