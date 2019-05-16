@@ -15,9 +15,9 @@ main :: IO ()
 main = do
   putStrLn ""
   putStrLn "generateOneMolecule: Begin"
-  --generateOneMolecule idir odir "example"
+  generateOneMolecule idir odir "example" 16
   putStrLn "generateOneMolecule: End"
   putStrLn ""
   putStrLn "generateManyMolecules: Begin"
-  generateManyMolecules idir odir "C2Br4" 0.01 100
+  generateManyMolecules idir odir "methan" 16 100
   putStrLn "generateManyMolecules: End"
