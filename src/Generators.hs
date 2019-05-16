@@ -1,6 +1,7 @@
 module Generators
-    -- * Molecular Generators
-  ( generateOneMolecule
+  ( 
+  -- * Molecular Generators
+    generateOneMolecule
   , generateManyMolecules
   ) where
 
@@ -47,20 +48,17 @@ generateManyMolecules idir odir mol err n = do
         let dm = coordMatrToDistMatr s2
             derr = distanceErrorFunction dm u l bonds
             cerr = 0
-        let newmole = updateCoord s2 atoms
-        let logs =
-              (show newmole ++ "\n") ++
-                ("Derr = " ++ show derr ++ "\n") ++
-                ("Cerr = " ++ show cerr ++ "\n")
         if derr + cerr > err
           then step odir s
           else do
-            print dm
-            print u
-            print l
             -- Write result molecule in output files
+            let newmole = updateCoord s2 atoms
             writeXYZ (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".xyz") "Comment" newmole
             -- Write logs in output files
+            let logs =
+                 show newmole ++ "\n" ++
+                 "Derr = " ++ show derr ++ "\n" ++
+                 "Cerr = " ++ show cerr ++ "\n"
             writeFile (odir ++ "/" ++ mol ++ "-" ++ show s ++ ".log") logs
             -- Print to console
             putStrLn ("generateManyMolecules: " ++ mol ++ ": step " ++ show s ++ ": OK!")

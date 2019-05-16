@@ -1,5 +1,6 @@
 module DistanceGeometry
-  ( -- * Steps of algorithm
+  ( 
+  -- * Steps of algorithm
     generateDistBoundsMatr
   , triangleSmooth
   , randomDistMatr
@@ -208,8 +209,8 @@ distanceErrorFunction dist upper lower bonds =
         (+) $ max 0 (d2 ! i ! j / u2 ! i ! j - 1) ^ 2 +
         max 0 (2 * l2 ! i ! j / (l2 ! i ! j + d2 ! i ! j) - 1) ^ 2
    in foldr f1 0 ij + foldr f2 0 ij + foldr f3 0 ij
+
 -- | Chiral error function.
---
 chiralErrorFunction :: Matrix Double -> Matrix Double -> Matrix Double -> Double
 chiralErrorFunction coord upper lower = undefined
 
