@@ -10,9 +10,7 @@
   - [X] Determination of the three largest eigval and eigvec
   - [X] Generation coordinates
   - [X] Refinement of the coordinates by minimization of an error function
-    - [X] Distance error function, ver 1
-    - [X] Distance error function, var 2
-    - [X] Distance error function, var 3
+    - [X] Distance error function
     - [ ] Chiral error function
   - [X] Embedding coordinates
   
