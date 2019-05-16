@@ -11,7 +11,7 @@
   - [X] Generation coordinates
   - [X] Refinement of the coordinates by minimization of an error function
     - [X] Distance error function
-    - [ ] Chiral error function
+    - [W] Chiral error function
   - [X] Embedding coordinates
   
 ** TODO I/O [2/5]
