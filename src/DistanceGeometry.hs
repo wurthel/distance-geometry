@@ -194,10 +194,11 @@ updateCoord coord mol = set atoms newatoms mol
 -- | Distance error function.
 distanceErrorFunction ::
      Matrix Double -> Matrix Double -> Matrix Double -> [Bond] -> Double
-distanceErrorFunction dist upper lower bonds =
-  let n = rows dist
+distanceErrorFunction coord upper lower bonds =
+  let n = rows coord
+      dist = coordMatrToDistMatr coord
       [d2, u2, l2] = map (^2) [dist, upper, lower]
-      ij' = [(i, j)| i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
+      ij' = [(i, j) | i <- [0 .. n - 2], j <- [i + 1 .. n - 1]]
       ij = filter (\(i,j) -> not $ isBonded i j bonds) ij'
       f1 (i, j) =
         (+) $ max 0 (d2 ! i ! j - u2 ! i ! j) ^ 2 +
@@ -211,8 +212,33 @@ distanceErrorFunction dist upper lower bonds =
    in foldr f1 0 ij + foldr f2 0 ij + foldr f3 0 ij
 
 -- | Chiral error function.
-chiralErrorFunction :: Matrix Double -> Matrix Double -> Matrix Double -> Double
-chiralErrorFunction coord upper lower = undefined
+chiralErrorFunction ::
+     Matrix Double -> Matrix Double -> Matrix Double -> [Bond] -> Double
+chiralErrorFunction coord upper lower bonds = 
+  let n = rows coord
+      dist = coordMatrToDistMatr coord
+      ijkm' = [(i,j,k,m) | i <- [0..n-1], j <- [i+1..n-1], 
+                           k <- [j+1..n-1], m <- [k+1..n-1]]
+      ijkm = filter (isTetrahedra dist) ijkm'
+        where
+          isTetrahedra d (i,j,k,m) = all (isTriangle d) [(i,j,k), (i,j,m), (i,k,m), (j,k,m)] && all (checkAngles d) [(i,j,k,m)]-- (j,k,m,i), (k,m,i,j), (m,i,j,k)]
+            where isTriangle d (i,j,k) = and [a + b > c, b + c > a, c + a > b]
+                   where a = d ! i ! j
+                         b = d ! i ! k
+                         c = d ! j ! k
+                  checkAngles d (i,j,k,m) = and [b1 + b2 > b3, b1 + b3 > b2, b2 + b3 > b1]
+                   where a1 = d ! i ! j; a2 = d ! i ! k
+                         a3 = d ! i ! m; a4 = d ! j ! k
+                         a5 = d ! j ! m; a6 = d ! k ! m 
+                         b1 = acos $ (a1^2 + a2^2 - a4^2) / (2*a1*a2)
+                         b2 = acos $ (a1^2 + a3^2 - a5^2) / (2*a1*a3)
+                         b3 = acos $ (a2^2 + a3^2 - a6^2) / (2*a2*a3)
+      vol (i,j,k,m) = (xj - xi) `dot` ((xk - xi) `cross` (xm - xi))
+        where [xi,xj,xk,xm] = map (coord !) [i,j,k,m]
+      u (i,j,k,m) = (sum . map (atIndex upper)) [(i, j), (j, k), (k, m), (m, i)]
+      l (i,j,k,m) = (sum . map (atIndex lower)) [(i, j), (j, k), (k, m), (m, i)]
+      f x@(i,j,k,m) = (+) $ max 0 (vol x - u x) ^ 2 + max 0 (l x - vol x)
+  in foldr f 0 ijkm
 
 -- * Utils.
 -- | Изменяет значение матрицы @m@ по индексам (@i@,@j@) на указанное @v@
