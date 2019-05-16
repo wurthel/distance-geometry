@@ -1,7 +1,7 @@
 import Data.Either
 import DistanceGeometry
 import Generators
-import IO
+import ReadWrite
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import System.Directory

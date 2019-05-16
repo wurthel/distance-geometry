@@ -1,4 +1,4 @@
-module IO   
+module ReadWrite   
   ( -- * Read
     readMolV2000
     -- * Write

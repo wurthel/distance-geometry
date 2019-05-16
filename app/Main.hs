@@ -1,12 +1,12 @@
 module Main where
 
-import Data.Either
-import DistanceGeometry
-import Generators
-import IO
-import Numeric.LinearAlgebra
-import Numeric.LinearAlgebra.Data
-import System.Directory
+import           Data.Either
+import           DistanceGeometry
+import           Generators
+import           Numeric.LinearAlgebra
+import           Numeric.LinearAlgebra.Data
+import           ReadWrite
+import           System.Directory
 
 idir = "test/molecules"
 odir = "test/results"

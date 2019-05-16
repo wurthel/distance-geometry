@@ -7,7 +7,7 @@ module Generators
 import Control.Lens
 import System.Directory
 import DistanceGeometry
-import IO
+import ReadWrite
 import Numeric.LinearAlgebra
 import Numeric.LinearAlgebra.Data
 import Types
@@ -37,17 +37,17 @@ generateManyMolecules idir odir mol err n = do
       | otherwise = do
         let (atoms, bonds) = readMolV2000 (idir ++ "/" ++ mol ++ ".mol")
         let s0@(u, l) =
-              (triangleInequalitySmoothingFloyd . generateDistanceBoundsMatrix atoms)
+              (triangleSmooth . generateDistBoundsMatr atoms)
                 bonds
-        s1 <- randomDistanceMatrix s0
+        s1 <- randomDistMatr s0
         let s2 =
-              (generateCoordinFromEigValAndVec .
-               largestEigValAndVec . distanceMatrixToMetricMatrix)
+              (generateCoorFromEigValVec .
+               largestEigValVec . distMatrToMetricMatr)
                 s1
-        let dm = coordMatrixToDistanceMatrix s2
+        let dm = coordMatrToDistMatr s2
             derr = distanceErrorFunction dm u l bonds
             cerr = 0
-        let newmole = updateCoordinates s2 atoms
+        let newmole = updateCoord s2 atoms
         let logs =
               (show newmole ++ "\n") ++
                 ("Derr = " ++ show derr ++ "\n") ++
